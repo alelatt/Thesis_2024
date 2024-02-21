@@ -3,6 +3,7 @@ import time
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def Distance(sim, index1, index2):
 	pos1 = np.array([sim.particles[index1].x, sim.particles[index1].y, sim.particles[index1].z])
@@ -37,12 +38,7 @@ def Simulation(niter):
 	sim.ri_mercurius.L = "infinity"
 
 	sim.add(m = 333000)
-	'''
-	sim.add(m = 1, a = 1, e = 0.7, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 10, a = 1.5, e = 0.8, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 100, a = 2, e = 0.95, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 100, a = 0.5, e = 0, Omega = np.random.uniform(0, 2*np.pi))
-	'''
+
 	np.random.seed(niter)
 	sim.add(m = 1, a = abs(np.random.normal(1, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
 	sim.add(m = 1, a = abs(np.random.normal(2, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
@@ -56,6 +52,7 @@ def Simulation(niter):
 
 	for timestep in times:
 		sim.integrate(timestep, exact_finish_time=0)
+		sim.save_to_file("archive{0}.bin".format(niter))
 
 		if np.any(Compute_Energy(sim) > 0):
 			return [1, time.time() - t_init, sim.t]
@@ -67,11 +64,25 @@ def wrapper(garbo = 0):
 
 
 if __name__ == '__main__':
-	t1 = time.time()
-	pool = Pool()
-	results = np.array(pool.map(Simulation, range(40)))
-	
-	print(results)
-	print("Average time spent %.d, average sim time %.d" %(np.mean(results[:,1]), np.mean(results[:,2])))
-	print("Stable %.d, unstable %.d" %(results[:,0].tolist().count(0), results[:,0].tolist().count(1)))
-	print("Total runtime %.d" %(time.time() - t1))
+	Nsym = 1
+
+	if os.path.isfile("archive{0}.bin".format(Nsym-1)) == 0:
+		t1 = time.time()
+		pool = Pool()
+		results = np.array(pool.map(Simulation, range(Nsym)))
+
+		print(results)
+		print("Average time spent %.d, average sim time %.d" %(np.mean(results[:,1]), np.mean(results[:,2])))
+		print("Total runtime %.d" %(time.time() - t1))
+		print("Stable %.d, unstable %.d" %(results[:,0].tolist().count(0), results[:,0].tolist().count(1)))
+
+	stable = 0
+	unstable = 0
+	for i in range(Nsym):
+		sa = rebound.Simulationarchive("archive{0}.bin".format(i))
+		print(len(sa), sa[-1].t)
+		if sa[-1].t != -1e6:
+			unstable += 1
+		else:
+			stable += 1
+	print("Stable %.d, unstable %.d" %(stable, unstable))
