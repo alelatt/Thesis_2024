@@ -52,7 +52,7 @@ def Simulation(niter):
 
 	for timestep in times:
 		sim.integrate(timestep, exact_finish_time=0)
-		sim.save_to_file("archive{0}.bin".format(niter))
+		sim.save_to_file("./simarchive/archive{0}.bin".format(niter))
 
 		if np.any(Compute_Energy(sim) > 0):
 			return [1, time.time() - t_init, sim.t]
@@ -64,9 +64,9 @@ def wrapper(garbo = 0):
 
 
 if __name__ == '__main__':
-	Nsym = 1
+	Nsym = 40
 
-	if os.path.isfile("archive{0}.bin".format(Nsym-1)) == 0:
+	if os.path.isfile("./simarchive/archive{0}.bin".format(Nsym-1)) == 0:
 		t1 = time.time()
 		pool = Pool()
 		results = np.array(pool.map(Simulation, range(Nsym)))
@@ -79,10 +79,24 @@ if __name__ == '__main__':
 	stable = 0
 	unstable = 0
 	for i in range(Nsym):
-		sa = rebound.Simulationarchive("archive{0}.bin".format(i))
-		print(len(sa), sa[-1].t)
-		if sa[-1].t != -1e6:
+		sa = rebound.Simulationarchive("./simarchive/archive{0}.bin".format(i))
+		if len(sa) < 100:
 			unstable += 1
+			sim = sa[-2]
+			sim.start_server(port=1234)
+
+			ob1 = rebound.OrbitPlot(sim)
+			plt.show()
+			plt.close('all')
+
+			sim.integrate(sa[-1].t)
+
+			ob1 = rebound.OrbitPlot(sim)
+			plt.show()
+			plt.close('all')
+
+			sim.stop_server(port=1234) 
+
 		else:
 			stable += 1
 	print("Stable %.d, unstable %.d" %(stable, unstable))
