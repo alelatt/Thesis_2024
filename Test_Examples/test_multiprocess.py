@@ -62,9 +62,6 @@ def Simulation(niter):
 
 	return [0, time.time() - t_init, sim.t]
 
-def wrapper(garbo = 0):
-	return Simulation()
-
 
 if __name__ == '__main__':
 	t1 = time.time()
