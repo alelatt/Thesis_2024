@@ -47,7 +47,7 @@ def Simulation(niter):
 
 	sim.move_to_com()
 
-	times = np.linspace(0, -1e6, 100)
+	times = np.linspace(0, -1e3, 100)
 
 	for timestep in times:
 		sim.integrate(timestep, exact_finish_time=0)
@@ -61,7 +61,7 @@ def Simulation(niter):
 if __name__ == '__main__':
 	t1 = time.time()
 	pool = Pool()
-	results = np.array(pool.map(Simulation, range(40)))
+	results = np.array(pool.map(Simulation, range(10)))
 	
 	print(results)
 	print("Average time spent %.d, average sim time %.d" %(np.mean(results[:,1]), np.mean(results[:,2])))

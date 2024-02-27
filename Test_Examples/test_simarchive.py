@@ -40,33 +40,45 @@ def Simulation(niter):
 	sim.add(m = 333000)
 
 	np.random.seed(niter)
-	sim.add(m = 1, a = abs(np.random.normal(1, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 1, a = abs(np.random.normal(2, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 1, a = abs(np.random.normal(3, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 1, a = abs(np.random.normal(4, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 1, a = abs(np.random.normal(5, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
+	sim.add(m = 1, a = abs(np.random.normal(1, 0.2)), e = abs(np.random.normal(0.1, 0.05)), omega = np.random.uniform(0, 2*np.pi))
+	sim.add(m = 1, a = abs(np.random.normal(2, 0.2)), e = abs(np.random.normal(0.1, 0.05)), omega = np.random.uniform(0, 2*np.pi))
+	sim.add(m = 1, a = abs(np.random.normal(3, 0.2)), e = abs(np.random.normal(0.1, 0.05)), omega = np.random.uniform(0, 2*np.pi))
+	sim.add(m = 1, a = abs(np.random.normal(4, 0.2)), e = abs(np.random.normal(0.1, 0.05)), omega = np.random.uniform(0, 2*np.pi))
+	sim.add(m = 1, a = abs(np.random.normal(5, 0.2)), e = abs(np.random.normal(0.1, 0.05)), omega = np.random.uniform(0, 2*np.pi))
 
 	sim.move_to_com()
 
 	times = np.linspace(0, -1e6, 100)
 
 	for timestep in times:
-		sim.integrate(timestep, exact_finish_time=0)
+		subtimes = np.linspace(sim.t, timestep, 1000)
+		pos = np.zeros((1000, sim.N))
+		energies = np.zeros((1000, sim.N))
+
+		for i, subtime in enumerate(subtimes):
+			sim.integrate(subtime, exact_finish_time=0)
+			for j in range(0, sim.N):
+				pos[i,j] = np.sqrt(sim.particles[j].x**2 + sim.particles[j].y**2 + sim.particles[j].z**2)
+			energies[i,:] = Compute_Energy(sim)
+
 		sim.save_to_file("./simarchive/archive{0}.bin".format(niter))
 
 		if np.any(Compute_Energy(sim) > 0):
+			print(niter, sim.t, Compute_Energy(sim))
+			np.savetxt("./simarchive/energies{0}".format(niter), energies)
+			np.savetxt("./simarchive/pos{0}".format(niter), pos)
 			return [1, time.time() - t_init, sim.t]
 
 	return [0, time.time() - t_init, sim.t]
 
-def wrapper(garbo = 0):
-	return Simulation()
-
 
 if __name__ == '__main__':
-	Nsym = 40
+	Nsym = 25
 
-	if os.path.isfile("./simarchive/archive{0}.bin".format(Nsym-1)) == 0:
+	if not os.path.exists("./simarchive"):
+		os.makedirs("./simarchive")
+
+	if not os.path.isfile("./simarchive/archive{0}.bin".format(Nsym-1)):
 		t1 = time.time()
 		pool = Pool()
 		results = np.array(pool.map(Simulation, range(Nsym)))
@@ -81,17 +93,35 @@ if __name__ == '__main__':
 	for i in range(Nsym):
 		sa = rebound.Simulationarchive("./simarchive/archive{0}.bin".format(i))
 		if len(sa) < 100:
+			print(i, sa[-1].t, Compute_Energy(sa[-1]))
+			rebound.OrbitPlot(sa[-1])
+			plt.show()
+			plt.close('all')
 			unstable += 1
 			sim = sa[-2]
+			sim.integrator = "mercurius"
+			sim.ri_mercurius.r_crit_hill = 3.
+			sim.ri_mercurius.L = "infinity"
 			sim.start_server(port=1234)
 
 			ob1 = rebound.OrbitPlot(sim)
 			plt.show()
 			plt.close('all')
 
-			sim.integrate(sa[-1].t)
+			times = np.linspace(sa[-2].t, sa[-1].t, 100)
+			energies = np.zeros((len(times), sim.N))
+
+			for i, timestep in enumerate(times):
+				sim.integrate(timestep, exact_finish_time = 0)
+				energies[i,:] = Compute_Energy(sim)
 
 			ob1 = rebound.OrbitPlot(sim)
+
+			plt.figure("Energies")
+			for i in range(0, sim.N):
+				plt.plot(energies[:,i])
+
+			print(sim.t, Compute_Energy(sim))
 			plt.show()
 			plt.close('all')
 
