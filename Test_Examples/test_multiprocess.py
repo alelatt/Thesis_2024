@@ -37,12 +37,7 @@ def Simulation(niter):
 	sim.ri_mercurius.L = "infinity"
 
 	sim.add(m = 333000)
-	'''
-	sim.add(m = 1, a = 1, e = 0.7, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 10, a = 1.5, e = 0.8, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 100, a = 2, e = 0.95, Omega = np.random.uniform(0, 2*np.pi))
-	sim.add(m = 100, a = 0.5, e = 0, Omega = np.random.uniform(0, 2*np.pi))
-	'''
+	
 	np.random.seed(niter)
 	sim.add(m = 1, a = abs(np.random.normal(1, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
 	sim.add(m = 1, a = abs(np.random.normal(2, 0.2)), e = abs(np.random.normal(0.1, 0.05)), Omega = np.random.uniform(0, 2*np.pi))
