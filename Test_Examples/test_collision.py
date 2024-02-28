@@ -87,6 +87,7 @@ if __name__ == '__main__':
 	for i in range(Nsym):
 		sa = rebound.Simulationarchive("./simarchive/archive{0}.bin".format(i))
 		if len(sa) < 100:
+			print(i, sa[-1].t)
 			unstable += 1
 			sim = sa[-2]
 			sim.integrator = "mercurius"
@@ -100,23 +101,23 @@ if __name__ == '__main__':
 			plt.show()
 			plt.close('all')
 
-			times = np.linspace(sa[-2].t, sa[-1].t, 100)
-			energies = np.zeros((len(times), sim.N))
+			times = np.linspace(sa[-2].t, sa[-1].t + (sa[-1].t - sa[-2].t), 100)
+			energies = np.empty((len(times), sim.N))
 
 			try:
-				for i, timestep in enumerate(times):
+				for j, timestep in enumerate(times):
 					sim.integrate(timestep, exact_finish_time = 0)
-					energies[i,:] = Compute_Energy(sim)
+					energies[j,:] = Compute_Energy(sim)
 			except rebound.Collision as error:
 				collisional += 1
 				unstable -= 1
 				print(i, error)
 
 			ob1 = rebound.OrbitPlot(sim)
-
+			print(energies[:,0])
 			plt.figure("Energies")
-			for i in range(0, sim.N):
-				plt.plot(energies[:,i])
+			for j in range(0, sim.N):
+				plt.plot(energies[:,j])
 				
 			plt.show()
 			plt.close('all')
