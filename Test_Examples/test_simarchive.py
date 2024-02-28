@@ -52,7 +52,7 @@ def Simulation(niter):
 
 	for timestep in times:
 		sim.integrate(timestep, exact_finish_time=0)
-		sim.save_to_file("./simarchive/archive{0}.bin".format(niter))
+		sim.save_to_file("./simarchive_base/archive{0}.bin".format(niter))
 
 		if np.any(Compute_Energy(sim) > 0):
 			return [1, time.time() - t_init, sim.t]
@@ -63,10 +63,10 @@ def Simulation(niter):
 if __name__ == '__main__':
 	Nsym = 25
 
-	if not os.path.exists("./simarchive"):
-		os.makedirs("./simarchive")
+	if not os.path.exists("./simarchive_base"):
+		os.makedirs("./simarchive_base")
 
-	if not os.path.isfile("./simarchive/archive{0}.bin".format(Nsym-1)):
+	if not os.path.isfile("./simarchive_base/archive{0}.bin".format(Nsym-1)):
 		t1 = time.time()
 		pool = Pool()
 		results = np.array(pool.map(Simulation, range(Nsym)))
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 	stable = 0
 	unstable = 0
 	for i in range(Nsym):
-		sa = rebound.Simulationarchive("./simarchive/archive{0}.bin".format(i))
+		sa = rebound.Simulationarchive("./simarchive_base/archive{0}.bin".format(i))
 		if len(sa) < 100:
 			unstable += 1
 			sim = sa[-2]
