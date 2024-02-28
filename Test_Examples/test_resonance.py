@@ -50,21 +50,26 @@ def Simulation(niter):
 
 	sim.move_to_com()
 
-	times = np.linspace(0, 1e6, 1e6)
+	times = np.linspace(0, 1e6, int(1e6)+1)
+	semiaxes = []
+	#semiaxes = np.zeros((len(times), sim.N))
+	#semiaxes[:,0] = times
 
-	for timestep in times:
+	for i, timestep in enumerate(times):
 		sim.integrate(timestep, exact_finish_time=0)
-		sim.save_to_file("./simarchive_res/archive{0}.bin".format(niter))
+		axes = np.zeros(sim.N)
+		axes[0] = timestep
+		for j in range(1, sim.N):
+			axes[j] = sim.particles[j].a
+		semiaxes.append(axes.tolist())
+		if i%int(1e4) == 0:
+			sim.save_to_file("./simarchive_res/archive{0}.bin".format(niter))
 		if np.any(Compute_Energy(sim) > 0):
-			return
-	return
-
-def Compute_Semiaxes(sim_arch):
-	semiaxes = np.zeros((len(sim_arch), sim_arch[0].N - 1))
-	for i in range(len(sim_arch)):
-		for j in range(sim_arch[0].N - 1):
-			semiaxes[i,j] = sa[i].particles[j+1].a
-	return semiaxes
+			sim.save_to_file("./simarchive_res/archive{0}.bin".format(niter))
+			np.save("./simarchive_res/semi{0}.npy".format(niter), np.array(semiaxes))
+			return 1
+	np.save("./simarchive_res/semi{0}.npy".format(niter), np.array(semiaxes))
+	return 0
 
 
 if __name__ == '__main__':
@@ -79,15 +84,20 @@ if __name__ == '__main__':
 		results = np.array(pool.map(Simulation, range(Nsym)))
 
 		print(results)
-		print("Average time spent %.d, average sim time %.d" %(np.mean(results[:,1]), np.mean(results[:,2])))
 		print("Total runtime %.d" %(time.time() - t1))
-		print("Stable %.d, unstable %.d" %(results[:,0].tolist().count(0), results[:,0].tolist().count(1)))
+		print("Stable %.d, unstable %.d" %(results.tolist().count(0), results.tolist().count(1)))
 
 	for i in range(Nsym):
 		sa = rebound.Simulationarchive("./simarchive_res/archive{0}.bin".format(i))
-		semiaxes = Compute_Semiaxes(sa)
-		title = "{.d}:P1 = {.2f}, P2 = {.2f}, P3 = {.2f}".format(i,sa[0].particles[1].P, sa[0].particles[2].P, sa[0].particles[3].P)
-		plt.figure(title)
-		plt.plot(semiaxes)
+		semiaxes = np.load("./simarchive_res/semi{0}.npy".format(i))
+		plt.rcParams.update({'font.size': 18})
+		title = "{:d}:P1 = {:.2f}, P2 = {:.2f}, P3 = {:.2f}".format(i,sa[0].particles[1].P, sa[0].particles[2].P, sa[0].particles[3].P)
+		plt.figure(title, figsize = [10,10])
+		for j in range(1, sa[0].N):
+			plt.plot(semiaxes[:,0], semiaxes[:,j])
+			plt.xticks(rotation = 25)
+			plt.xlabel("Year since beginning")
+			plt.ylabel("P [yrs]")
+			plt.grid()
 
 	plt.show()
