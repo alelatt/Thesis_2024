@@ -51,22 +51,10 @@ def Simulation(niter):
 	times = np.linspace(0, -1e6, 100)
 
 	for timestep in times:
-		subtimes = np.linspace(sim.t, timestep, 1000)
-		pos = np.zeros((1000, sim.N))
-		energies = np.zeros((1000, sim.N))
-
-		for i, subtime in enumerate(subtimes):
-			sim.integrate(subtime, exact_finish_time=0)
-			for j in range(0, sim.N):
-				pos[i,j] = np.sqrt(sim.particles[j].x**2 + sim.particles[j].y**2 + sim.particles[j].z**2)
-			energies[i,:] = Compute_Energy(sim)
-
+		sim.integrate(timestep, exact_finish_time=0)
 		sim.save_to_file("./simarchive/archive{0}.bin".format(niter))
 
 		if np.any(Compute_Energy(sim) > 0):
-			print(niter, sim.t, Compute_Energy(sim))
-			np.savetxt("./simarchive/energies{0}".format(niter), energies)
-			np.savetxt("./simarchive/pos{0}".format(niter), pos)
 			return [1, time.time() - t_init, sim.t]
 
 	return [0, time.time() - t_init, sim.t]
@@ -93,10 +81,6 @@ if __name__ == '__main__':
 	for i in range(Nsym):
 		sa = rebound.Simulationarchive("./simarchive/archive{0}.bin".format(i))
 		if len(sa) < 100:
-			print(i, sa[-1].t, Compute_Energy(sa[-1]))
-			rebound.OrbitPlot(sa[-1])
-			plt.show()
-			plt.close('all')
 			unstable += 1
 			sim = sa[-2]
 			sim.integrator = "mercurius"
@@ -121,7 +105,6 @@ if __name__ == '__main__':
 			for i in range(0, sim.N):
 				plt.plot(energies[:,i])
 
-			print(sim.t, Compute_Energy(sim))
 			plt.show()
 			plt.close('all')
 
