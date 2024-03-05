@@ -86,7 +86,7 @@ def Simulation():
 
 	sim.add(m = 333000, r = 4.65e-3, hash = hashes[0])
 	sim.add(m = 3.18e2, P = 1, r = 4.78e-4, hash = hashes[1])
-	sim.add(m = 3.18e2, P = 2.005, r = 4.78e-4, hash = hashes[2])
+	sim.add(m = 3.18e2, P = 2.01, r = 4.78e-4, hash = hashes[2])
 	sim.add(m = 3.18e2, P = 2.99, r = 4.78e-4, hash = hashes[3])
 	sim.add(m = 0.1, a = -0.5, e = 1.1, hash = hashes[4])
 
@@ -98,7 +98,7 @@ def Simulation():
 	for i in range(1,sim.N):
 		if sim.particles[i].rhill > maxrhill:
 			maxrhill = sim.particles[i].rhill
-	sim.exit_min_distance = maxrhill
+	sim.exit_min_distance = 2*maxrhill
 
 	minP = 100
 	for i in range(1, sim.N):
@@ -116,32 +116,35 @@ def Simulation():
 
 	E0 = sim.energy()
 
-	times = np.arange(0, int(1e6) + 1, 1)
+	times = np.arange(0, int(1e6) + 10, 10)
 
 	try:
 		for time in times:
 			while abs(sim.t) < abs(time):
 				try:
-					Update_MaxDist(sim)
 					sim.integrate(time, exact_finish_time=0)
 
 				except rebound.Encounter:
-					print("Near Miss", sim.t, time)
+					#print("Near Miss", sim.t, time)
 					sim.exit_min_distance = 0
-					subtimes = np.arange(sim.t, time + 1/8000, 1/8000)
-					for subtime in subtimes:
-						while abs(sim.t) < abs(subtime):
-							try:
-								Update_MaxDist(sim)
-								sim.integrate(subtime, exact_finish_time=0)
+					timestep = 0
+					if sim.t < time:
+						timestep = sim.t + 1/8760
+					else:
+						timestep = sim.t - 1/8760
 
-							except rebound.Escape:
-								Handle_Expulsion(sim, subtime, hashes)
+					while abs(sim.t) < abs(timestep):
+						try:
+							Update_MaxDist(sim)
+							sim.integrate(timestep, exact_finish_time=0)
 
-							finally:
-								semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+						except rebound.Escape:
+							Handle_Expulsion(sim, timestep, hashes)
 
-					sim.exit_min_distance = maxrhill
+						finally:
+							semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+
+					sim.exit_min_distance = 2*maxrhill
 
 				except rebound.Escape:
 					Handle_Expulsion(sim, time, hashes)
@@ -167,14 +170,14 @@ if __name__ == '__main__':
 
 	plt.figure("Semiaxes", figsize = [10,10])
 	for i in range(len(semis[0,:])):
-		plt.plot(tsteps, semis[:,i])
+		plt.plot(tsteps, semis[:,i], '.-')
 
 	plt.figure("Eccentricities", figsize = [10,10])
 	for i in range(len(eccs[0,:])):
-		plt.plot(tsteps, eccs[:,i])
+		plt.plot(tsteps, eccs[:,i], '.-')
 
 	plt.figure("Inclinations", figsize = [10,10])
 	for i in range(len(incls[0,:])):
-		plt.plot(tsteps, incls[:,i])
+		plt.plot(tsteps, incls[:,i], '.-')
 
 	plt.show()
