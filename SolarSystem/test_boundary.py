@@ -52,9 +52,12 @@ def Handle_Expulsion(sim, time, hashes):
 	for i in range(1,sim.N):
 		if Distance(sim, 0, i) > sim.exit_max_distance:
 			index_rm = i
-	sim.remove(index = index_rm)
+	#sim.remove(index = index_rm)
+	sim.boundary = "open"
+	sim.configure_box(sim.exit_max_distance/2)
+	sim.step()
 	print("Removed Particle {:s}".format(hashes[index_rm]), sim.t, time)
-	sim.move_to_com()
+	sim.boundary = "none"
 	return
 
 def Update_MaxDist(sim):
@@ -62,7 +65,101 @@ def Update_MaxDist(sim):
 	for i in range(1,sim.N):
 		if sim.particles[i].a > max_semi:
 			max_semi = sim.particles[i].a
-	sim.exit_max_distance = 25*max_semi
+	sim.exit_max_distance = 10*max_semi
+	return
+
+def Handle_Exceptions(sim, time, flag, init_N, hashes, semis, eccs, incls, tsteps, red_rate = 1e-3):
+	'''
+	flag = 1 : Close Encounter
+	flag = 2 : Escape
+	flag = 3 : Close Encounter and Escape
+	'''
+	flag_internal = flag
+
+	timestep = 0
+	if sim.t < time:
+		timestep = min([sim.t + 1/8760, time])
+	else:
+		timestep = max([sim.t - 1/8760, time])
+
+	exit_distance_min = sim.exit_min_distance
+	exit_distance_max = sim.exit_max_distance
+
+	if flag_internal == 1:
+		print("Used flag 1 at {:.7f} before getting to {:.7f}, sub of {:.7f}".format(sim.t, timestep, time))
+		sim.exit_min_distance = 0
+
+		try:
+			Update_MaxDist(sim)
+			sim.integrate(timestep, exact_finish_time=0)
+
+		except rebound.Escape:
+			flag_internal = 3
+
+		finally:
+			semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+
+		sim.exit_min_distance = exit_distance_min
+
+	if flag_internal == 2:
+		index_rm = 1000
+		for i in range(1,sim.N):
+			if Distance(sim, 0, i) > sim.exit_max_distance:
+				index_rm = i
+
+		print("Used flag 2 because of {:s} at {:.7f} before getting to {:.7f}, sub of {:.7f}. Mass {:.3f}".format(hashes[index_rm], sim.t, timestep, time, sim.particles[index_rm].m))
+
+		sim.exit_max_distance = np.inf
+
+		try:
+			if sim.particles[index_rm].m - red_rate >= 0:
+				sim.particles[index_rm].m -= red_rate
+			else:
+				sim.particles[index_rm].m = 0
+
+			if sim.particles[index_rm].m == 0:
+				sim.boundary = "open"
+				sim.configure_box(exit_distance_max/2)
+
+			sim.integrate(timestep, exact_finish_time=0)
+
+		except rebound.Encounter:
+			flag_internal = 3
+
+		finally:
+			semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+
+		sim.exit_max_distance = exit_distance_max
+		sim.boundary = "none"
+	
+	if flag_internal == 3:
+		index_rm = 1000
+		for i in range(1,sim.N):
+			if Distance(sim, 0, i) > sim.exit_max_distance:
+				index_rm = i
+
+		print("Used flag 3 because of {:s} at {:.7f} before getting to {:.7f}, sub of {:.7f}".format(hashes[index_rm], sim.t, timestep, time))
+
+		sim.exit_max_distance = np.inf
+		sim.exit_min_distance = 0
+
+		if sim.particles[index_rm].m - red_rate >= 0:
+			sim.particles[index_rm].m -= red_rate
+		else:
+			sim.particles[index_rm].m = 0
+
+		if sim.particles[index_rm].m == 0:
+			sim.boundary = "open"
+			sim.configure_box(exit_distance_max/2)
+			print("{:s} deleted at {:.7f} before getting to {:.7f}, sub of {:.7f}".format(hashes[index_rm], sim.t, timestep, time))
+
+		sim.integrate(timestep, exact_finish_time=0)
+
+		semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+
+		sim.exit_min_distance = exit_distance_min
+		sim.exit_max_distance = exit_distance_max
+		sim.boundary = "none"
 	return
 
 
@@ -106,8 +203,8 @@ def Simulation():
 			minP = sim.particles[i].P
 	sim.dt = minP/360
 
-	flag = 0
 	init_N = sim.N
+	prev_N = init_N
 
 	tsteps = []
 	semis = []
@@ -116,15 +213,18 @@ def Simulation():
 
 	E0 = sim.energy()
 
-	times = np.arange(0, int(1e6) + 10, 10)
+	times = np.arange(0, int(1e6) + 1, 1)
 
 	try:
 		for time in times:
+			semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
 			while abs(sim.t) < abs(time):
 				try:
 					sim.integrate(time, exact_finish_time=0)
 
 				except rebound.Encounter:
+					Handle_Exceptions(sim, time, 1, init_N, hashes, semis, eccs, incls, tsteps)
+					'''
 					#print("Near Miss", sim.t, time)
 					sim.exit_min_distance = 0
 					timestep = 0
@@ -145,12 +245,10 @@ def Simulation():
 							semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
 
 					sim.exit_min_distance = 2*maxrhill
-
+					'''
 				except rebound.Escape:
-					Handle_Expulsion(sim, time, hashes)
-
-				finally:
-					semis, eccs, incls, tsteps = Update_Elems(sim, init_N, hashes, semis, eccs, incls, tsteps)
+					Handle_Exceptions(sim, time, 2, init_N, hashes, semis, eccs, incls, tsteps)
+					#Handle_Expulsion(sim, time, hashes)
 
 	except rebound.Collision:
 		print("Collision at {:.1f}".format(sim.t))
