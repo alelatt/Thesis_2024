@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import os
-import time as tm
 import rebound
+import time as tm
 
 from ctypes import cdll, c_double
-clibheartbeat = cdll.LoadLibrary('./heartbeat/heartbeat.so')
+clibheartbeat = cdll.LoadLibrary('/home/alelatt/Thesis_2024/Shared_Libs/heartbeat/heartbeat.so')
 
 ################## CONSTANTS ##################
 orbit_fraction = 720
@@ -90,7 +90,6 @@ def Update_Elems(sim, init_N, hashes, outputs):
 	outputs[3].append(incl.tolist())
 	outputs[5].append(Kinetic(sim, 0))
 	outputs[6].append(pot)
-	
 	return
 
 def Update_Params(sim):
@@ -138,7 +137,6 @@ def Output_to_file(simulation, outputs, fpath = ""):
 
 		for i in range(len(outputs)):
 			outputs[i].clear()
-
 	return
 
 def Handle_Exceptions(sim, register, init_N, hashes, outputs, en_array, red_rate = 1e-3):
@@ -229,7 +227,7 @@ def Simulation(t_start, t_end, step):
 	sim.track_energy_offset = 1
 
 	sim.heartbeat = clibheartbeat.heartbeat
-	''
+	'''
 	hashes = ["Sun", "Planet1", "Planet2", "Planet3", "Comet"]
 
 	sim.add(m = 333000, r = 4.65e-3, hash = hashes[0])
@@ -244,7 +242,7 @@ def Simulation(t_start, t_end, step):
 	sim.add(m = 0.81, P = 0.62, e = 0.007, r = 4.05e-5, hash = hashes[1])
 	sim.add(m = 1, P = 1, e = 0.016, r = 4.26e-5, hash = hashes[2])
 	sim.add(m = 0.1, P = 1.88, e = 0.09, r = 2.27e-5, hash = hashes[3])
-	'''
+	
 	sim.move_to_com()
 
 	sim.start_server(port=1234)
@@ -329,43 +327,46 @@ def Simulation(t_start, t_end, step):
 
 
 if __name__ == '__main__':
+	
 	t1 = tm.time()
-	out_dir = Simulation(0, int(1e5), int(1e3))
+	out_dir = [Simulation(0, int(1e4), int(1e3))]
 	print("Execution time {:.0f}".format(tm.time() - t1))
+	'''
+	out_dir = ["./chaos_helio", "./chaos_jacobi"]
+	'''
+	for directory in out_dir:
+		print(directory)
+		outputs = np.load("{}/outputs.npz".format(directory))
+		tsteps = outputs['tsteps']
+		semis = outputs['semiaxis']
+		eccs = outputs['eccent']
+		incls = outputs['incl']
+		kin = outputs['kin']
+		pot = outputs['pot']
 
-	Check_Sim(out_dir)
+		plt.figure("Semiaxes {}".format(directory), figsize = [10,10])
+		for i in range(len(semis[0,:])):
+			plt.plot(tsteps, semis[:,i], '.-')
 
-	outputs = np.load("{}/outputs.npz".format(out_dir))
-	tsteps = outputs['tsteps']
-	semis = outputs['semiaxis']
-	eccs = outputs['eccent']
-	incls = outputs['incl']
-	kin = outputs['kin']
-	pot = outputs['pot']
+		plt.figure("Eccentricities {}".format(directory), figsize = [10,10])
+		for i in range(len(eccs[0,:])):
+			plt.plot(tsteps, eccs[:,i], '.-')
 
-	plt.figure("Semiaxes", figsize = [10,10])
-	for i in range(len(semis[0,:])):
-		plt.plot(tsteps, semis[:,i], '.-')
+		plt.figure("Inclinations {}".format(directory), figsize = [10,10])
+		for i in range(len(incls[0,:])):
+			plt.plot(tsteps, incls[:,i], '.-')
 
-	plt.figure("Eccentricities", figsize = [10,10])
-	for i in range(len(eccs[0,:])):
-		plt.plot(tsteps, eccs[:,i], '.-')
+		plt.figure("Potential {}".format(directory), figsize = [10,10])
+		plt.plot(tsteps, pot, '.-')
+		plt.yscale('log')
 
-	plt.figure("Inclinations", figsize = [10,10])
-	for i in range(len(incls[0,:])):
-		plt.plot(tsteps, incls[:,i], '.-')
+		plt.figure("Kinetic {}".format(directory), figsize = [10,10])
+		plt.plot(tsteps, kin, '.-')
+		plt.yscale('log')
 
-	plt.figure("Potential", figsize = [10,10])
-	plt.plot(tsteps, pot, '.-')
-	plt.yscale('log')
-
-	plt.figure("Kinetic", figsize = [10,10])
-	plt.plot(tsteps, kin, '.-')
-	plt.yscale('log')
-
-	plt.figure("Pot/Kin", figsize = [10,10])
-	plt.plot(tsteps, pot/kin, '.-')
-	plt.yscale('log')
+		plt.figure("Pot/Kin {}".format(directory), figsize = [10,10])
+		plt.plot(tsteps, pot/kin, '.-')
+		plt.yscale('log')
 	
 
 	plt.show()
