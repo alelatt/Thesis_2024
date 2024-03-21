@@ -14,7 +14,7 @@ clibheartbeat = cdll.LoadLibrary('/home/alelatt/Thesis_2024/Shared_Libs/heartbea
 ################## CONSTANTS ##################
 orbit_fraction = 720
 small_timestep = 1/8760 #fraction of timestep to use while events are ongoing
-exit_enc_const = 3 #number of mutual hill radii below which a close encounter is detected
+exit_enc_const = 2 #number of mutual hill radii below which a close encounter is detected
 exit_esc_const = 1e-3 #U(planet, star)/T(star) under which an escape is detected
 
 AU = 149597870700
@@ -26,9 +26,9 @@ start_time = 0
 end_time = -int(1e4)
 step_time = int(1e3)
 step_fraction = 100
-N_processes = 9
+N_processes = 12
 plot_lines = 3
-plot_columns = 3
+plot_columns = 4
 
 def Parallel_Sim(niter):
 	print(niter)
@@ -97,9 +97,16 @@ if __name__ == '__main__':
 	for i in range(1, 4):
 		fig, axs = plt.subplots(plot_lines, plot_columns, figsize=(10, 10), layout = 'tight')
 		fig.suptitle(plot_titles[i-1])
+		line = 0
+		column = 0
 		for j in range(N_processes):
 			times = output_sets[j]['tsteps']
 			values = output_sets[j][set_titles[i]]
-			axs[j//plot_lines, j%plot_columns].plot(times, values, '.-')
+			axs[line, column].plot(times, values, '.-')
+
+			column += 1
+			if column == plot_columns:
+				column = 0
+				line += 1
 
 	plt.show()
