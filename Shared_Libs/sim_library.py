@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time as tm
 
 import os
 import rebound
-import time as tm
+
+from datetime import datetime
 
 from ctypes import cdll, c_double
 clibheartbeat = cdll.LoadLibrary('/home/alelatt/Thesis_2024/Shared_Libs/heartbeat/heartbeat.so')
@@ -47,7 +49,7 @@ def Compute_Distances(simulation):
 	for i in range(1, simulation.N):
 		j = 0
 		while j<i:
-			dist_array.append(Distance(simulation, i, j))
+			dist_array.append(Distance(simulation = simulation, index1 = i, index2 = j))
 			j += 1
 	return np.array(dist_array)
 
@@ -63,7 +65,7 @@ def Compute_Hill(simulation):
 			Simulation object
 
 	Outputs:
-		ndarray - Hill/Roche radius between all particles
+		ndarray - Hill or Roche radius between all particles
 	"""
 
 	hill_array = []
@@ -72,7 +74,7 @@ def Compute_Hill(simulation):
 		j = 0
 		while j<i:
 			if j == 0:
-				if (part_i.m == 0) and (Kinetic(simulation, i) - Potential(simulation, i) >= 0):
+				if (part_i.m == 0) and (Kinetic(simulation = simulation, index = i) - Potential(simulation = simulation, index = i) >= 0):
 					hill_array.append(0)
 				else:
 					r_roche = part_i.r * ((2*simulation.particles[0].m/part_i.m)**(1./3.))
@@ -115,7 +117,7 @@ def Potential(simulation, index):
 	U = 0
 	for i in range(len(simulation.particles)):
 		if i != index:
-			U += simulation.G*simulation.particles[i].m*simulation.particles[index].m/Distance(simulation, index, i)
+			U += simulation.G*simulation.particles[i].m*simulation.particles[index].m/Distance(simulation = simulation, index1 = index, index2 = i)
 	return U
 
 
@@ -135,7 +137,7 @@ def Compute_Energy(simulation):
 
 	energies = np.zeros(len(simulation.particles))
 	for i in range(len(energies)):
-		energies[i] = Kinetic(simulation, i) - Potential(simulation, i)
+		energies[i] = Kinetic(simulation = simulation, index = i) - Potential(simulation = simulation, index = i)
 	return energies
 
 
@@ -158,7 +160,7 @@ def Update_Elems(simulation, init_N, hashes, outputs):
 	semi = np.zeros(init_N - 1)
 	ecc = np.zeros(init_N - 1)
 	incl = np.zeros(init_N - 1)
-	pot = 0
+
 	for i in range(0, init_N - 1):
 		try:
 			orbit = simulation.particles[hashes[i+1]].orbit(primary = simulation.particles[0])
@@ -170,17 +172,10 @@ def Update_Elems(simulation, init_N, hashes, outputs):
 			ecc[i] = np.nan
 			incl[i] = np.nan
 
-	try:
-		pot = simulation.G*simulation.particles[4].m*simulation.particles[0].m/Distance(simulation, 0, 4)
-	except:
-		pot = 0
-
 	outputs[0].append(simulation.t)
 	outputs[1].append(semi.tolist())
 	outputs[2].append(ecc.tolist())
 	outputs[3].append(incl.tolist())
-	outputs[5].append(Kinetic(simulation, 0))
-	outputs[6].append(pot)
 	return
 
 
@@ -223,9 +218,10 @@ def Output_to_file(simulation, outputs, fpath = ""):
 			Path for file saving
 	"""
 
-	if (not os.path.isdir(fpath)) and (fpath == ""):
-		loctime = tm.localtime()
-		fpath = "./{}_{}_{}_{}_{}".format(loctime.tm_year, loctime.tm_mon, loctime.tm_mday, loctime.tm_hour, loctime.tm_min)
+	if fpath == "":
+		tm.sleep(np.random.uniform(0,1)/100)
+		loctime = datetime.now()
+		fpath = "./{}".format(loctime.microsecond)
 		os.mkdir(fpath)
 		return fpath
 
@@ -238,17 +234,13 @@ def Output_to_file(simulation, outputs, fpath = ""):
 				tsteps = np.concatenate((out_saved['tsteps'], np.array(outputs[0]))),
 				semiaxis = np.concatenate((out_saved['semiaxis'], np.array(outputs[1]))),
 				eccent = np.concatenate((out_saved['eccent'], np.array(outputs[2]))),
-				incl = np.concatenate((out_saved['incl'], np.array(outputs[3]))),
-				kin = np.concatenate((out_saved['kin'], np.array(outputs[5]))),
-				pot = np.concatenate((out_saved['pot'], np.array(outputs[6]))))
+				incl = np.concatenate((out_saved['incl'], np.array(outputs[3]))))
 		else:
 			np.savez_compressed("{}/outputs.npz".format(fpath),
 				tsteps = np.array(outputs[0]),
 				semiaxis = np.array(outputs[1]),
 				eccent = np.array(outputs[2]),
-				incl = np.array(outputs[3]),
-				kin = np.array(outputs[5]),
-				pot = np.array(outputs[6]))
+				incl = np.array(outputs[3]))
 
 		if len(outputs[4]) > 0:
 			fopen = open(fpath+"/register.txt", 'a+')
@@ -259,7 +251,7 @@ def Output_to_file(simulation, outputs, fpath = ""):
 			outputs[i].clear()
 	return
 
-def Handle_Exceptions(simulation, register, init_N, hashes, outputs, en_array, small_timestep, red_rate = 1e-3, info = False):
+def Handle_Exceptions(simulation, register, init_N, hashes, outputs, en_array, orbit_fraction, small_timestep, red_rate = 1e-3, info = False):
 	"""
 	Handles close encounters and escapes, triggered by exceptions.
 	During the handling the timesteps are reduced to small_timestep.
@@ -313,12 +305,12 @@ def Handle_Exceptions(simulation, register, init_N, hashes, outputs, en_array, s
 
 		if len(register[0]) != 0:
 			c_double.in_dll(clibheartbeat,"exit_enc_const").value = 0
-			old_dt = Update_Step(simulation)
+			old_dt = Update_Step(simulation = simulation, orbit_fraction = orbit_fraction)
 
 		if len(register[1]) != 0:
 			c_double.in_dll(clibheartbeat,"exit_esc_const").value = 0
 			for i in range(1,simulation.N):
-				if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation, 0, i) < esc_const*Kinetic(simulation, 0):
+				if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation = simulation, index1 = 0, index2 = i) < esc_const*Kinetic(simulation = simulation, index = 0):
 					if hashes[i] not in register[1]:
 						register[1].append(hashes[i])
 						outstr = "{:s} (Mass {:.3f}) escaped at {:.7f}\n".format(hashes[i], simulation.particles[i].m, simulation.t)
@@ -359,7 +351,7 @@ def Handle_Exceptions(simulation, register, init_N, hashes, outputs, en_array, s
 		except rebound.Escape:
 			c_double.in_dll(clibheartbeat,"exit_esc_const").value = 0
 			for i in range(1,simulation.N):
-				if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation, 0, i) < esc_const*Kinetic(simulation, 0):
+				if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation = simulation, index1 = 0, index2 = i) < esc_const*Kinetic(simulation = simulation, index = 0):
 					if hashes[i] not in register[1]:
 						register[1].append(hashes[i])
 						outstr = "{:s} (Mass {:.3f}) escaped at {:.7f}\n".format(hashes[i], simulation.particles[i].m, simulation.t)
@@ -368,16 +360,16 @@ def Handle_Exceptions(simulation, register, init_N, hashes, outputs, en_array, s
 							print(outstr)
 
 		finally:
-			Update_Elems(simulation, init_N, hashes, outputs)
+			Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = outputs)
 			
-		if (len(register[0]) != 0) and (np.all(Compute_Distances(simulation) > enc_const*Compute_Hill(simulation))):
+		if (len(register[0]) != 0) and (np.all(Compute_Distances(simulation = simulation) > enc_const*Compute_Hill(simulation = simulation))):
 			register[0].pop()
 			c_double.in_dll(clibheartbeat,"exit_enc_const").value = enc_const
 
 	simulation.dt = old_dt
 	return
 
-def Simulation(simulation, t_start, t_end, step, exit_esc_const, exit_enc_const, info = False):
+def Simulation(simulation, t_start, t_end, step, step_fraction, hashes, orbit_fraction, small_timestep, exit_enc_const, exit_esc_const, info = False):
 	"""
 	Runs the complete simulation
 
@@ -390,9 +382,17 @@ def Simulation(simulation, t_start, t_end, step, exit_esc_const, exit_enc_const,
 			End time of the simulation
 		step : float
 			Timestep for saving simulation archives
+		step_fraction : float
+			Fraction of a step to save orbital elements
+		orbit_fraction : float
+			Fraction of shortest orbital period
+		small_timestep : float
+			Small timestep for integrations during exceptions handling
+		exit_enc_const : float
+			Multiple of Hill or Roche radius to trigger close encounters
 		exit_esc_const : float
-			Value of (star-planet potential)/(star kinetic)
-				under which an escape is raised
+			Value of (planet-star potential)/(star kinetic energy) under which
+				an escape is triggered
 		info : bool
 			If True prints events to console
 
@@ -422,6 +422,7 @@ def Simulation(simulation, t_start, t_end, step, exit_esc_const, exit_enc_const,
 		During an escape, since an object's mass is reduced to zero, the energy
 			loss isn't counted
 	"""
+	simulation.move_to_com()
 
 	time_dir = np.inf
 	if t_start < t_end:
@@ -433,12 +434,12 @@ def Simulation(simulation, t_start, t_end, step, exit_esc_const, exit_enc_const,
 	c_double.in_dll(clibheartbeat,"exit_enc_const").value = exit_enc_const
 
 	simulation.dt = time_dir*simulation.dt
-	simulation.dt = Update_Step(simulation)
+	simulation.dt = Update_Step(simulation, orbit_fraction)
 
 	init_N = simulation.N
 
 	output = [[], [], [], [], []]
-	out_dir = Output_to_file(simulation, output)
+	out_dir = Output_to_file(simulation = simulation, outputs = output)
 
 	register = [[], []]
 
@@ -447,50 +448,54 @@ def Simulation(simulation, t_start, t_end, step, exit_esc_const, exit_enc_const,
 	Energy_array = np.array([E0, Delta_E])
 
 	times = np.arange(t_start + time_dir*step, t_end + time_dir*step, time_dir*step)
-	Update_Elems(simulation, init_N, hashes, output)
+	Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
 
 	try:
 		for time in times:
-			Output_to_file(simulation, output, out_dir)
-			while abs(simulation.t) < abs(time):
-				try:
-					simulation.integrate(time, exact_finish_time=0)
-					Update_Elems(simulation, init_N, hashes, output)
+			Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 
-				except rebound.Escape:
-					Energy_array[1] = Energy_array[0] - simulation.energy()
-					Energy_array[0] = simulation.energy()
-					for i in range(1,simulation.N):
-						if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation, 0, i) < exit_esc_const*Kinetic(simulation, 0):
-							if hashes[i] not in register[1]:
-								register[1].append(hashes[i])
-								outstr = "{:s} (Mass {:.3f}) escaped at {:.7f}\n".format(hashes[i], simulation.particles[i].m, simulation.t)
-								output[4].append(outstr)
-								if info == True:
-									print(outstr)
-					Handle_Exceptions(simulation, register, init_N, hashes, output, Energy_array)
+			substep = abs(time - simulation.t)/step_fraction
+			subtimes = np.arange(simulation.t + time_dir*substep, time + time_dir*substep, time_dir*substep)
+			for subtime in subtimes:
+				while abs(simulation.t) < abs(subtime):
+					try:
+						simulation.integrate(subtime, exact_finish_time=0)
+						Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
 
-				except rebound.Encounter:
-					register[0].append(simulation.t)
-					outstr = "Close Encounter at {:.7f} before getting to {:.7f}\n".format(simulation.t, time)
-					output[4].append(outstr)
-					if info == True:
-						print(outstr)
-					Handle_Exceptions(simulation, register, init_N, hashes, output, Energy_array)
+					except rebound.Escape:
+						Energy_array[1] = Energy_array[0] - simulation.energy()
+						Energy_array[0] = simulation.energy()
+						for i in range(1,simulation.N):
+							if simulation.G*simulation.particles[0].m*simulation.particles[i].m/Distance(simulation = simulation, index1 = 0, index2 = i) < exit_esc_const*Kinetic(simulation = simulation, index = 0):
+								if hashes[i] not in register[1]:
+									register[1].append(hashes[i])
+									outstr = "{:s} (Mass {:.3f}) escaped at {:.7f}\n".format(hashes[i], simulation.particles[i].m, simulation.t)
+									output[4].append(outstr)
+									if info == True:
+										print(outstr)
+						Handle_Exceptions(simulation = simulation, register = register, init_N = init_N, hashes = hashes, outputs = output, en_array = Energy_array, orbit_fraction = orbit_fraction, small_timestep = small_timestep, info = info)
+
+					except rebound.Encounter:
+						register[0].append(simulation.t)
+						outstr = "Close Encounter at {:.7f} before getting to {:.7f}\n".format(simulation.t, subtime)
+						output[4].append(outstr)
+						if info == True:
+							print(outstr)
+						Handle_Exceptions(simulation = simulation, register = register, init_N = init_N, hashes = hashes, outputs = output, en_array = Energy_array, orbit_fraction = orbit_fraction, small_timestep = small_timestep, info = info)
 
 	except rebound.Collision:
 		outstr = "Collision at {:.7f}\nDE/(E0*DT_integr) = {}".format(simulation.t, (Energy_array[1] + Energy_array[0] - simulation.energy())/(simulation.t*E0))
 		output[4].append(outstr)
 		if info == True:
 			print(outstr)
-		Update_Elems(simulation, init_N, hashes, output)
-		Output_to_file(simulation, output, out_dir)
+		Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
+		Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 		return out_dir
 	
 	outstr = "Integration over at {:.7f}\nDE/(E0*DT_integr) = {}".format(simulation.t, (Energy_array[1] + Energy_array[0] - simulation.energy())/(simulation.t*E0))
 	output[4].append(outstr)
 	if info == True:
 		print(outstr)
-	Update_Elems(simulation, init_N, hashes, output)
-	Output_to_file(simulation, output, out_dir)
+	Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
+	Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 	return out_dir

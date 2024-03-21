@@ -6,31 +6,7 @@
 To compile:
 move to heartbeat folder
 gcc -c -O3 -fPIC heartbeat.c -o heartbeat.o
-gcc -L. -shared heartbeat.o -o heartbeat.so -lrebound -Wl,-rpath='./heartbeat'
-*/
-
-/*
-double max_distance = 0;
-
-void heartbeat(struct reb_simulation* const r){
-	const int N = r->N - r->N_var;
-	for (int i=0;i<N;i++){
-		double distance = reb_particle_distance(&r->particles[0], &r->particles[i]);
-		if (distance>max_distance){
-			double Kinetic = r->particles[i].m*(r->particles[i].vx*r->particles[i].vx + r->particles[i].vy*r->particles[i].vy + r->particles[i].vz*r->particles[i].vz)/2;
-			double Potential = r->G*r->particles[0].m*r->particles[i].m/reb_particle_distance(&r->particles[0], &r->particles[i]);
-			for (int j=1;j<N;j++){
-				if (j != i){
-					Potential += r->G*r->particles[i].m*r->particles[j].m/reb_particle_distance(&r->particles[i], &r->particles[j]);
-				}
-			}
-			double Energy = Kinetic - Potential;
-			if (Energy >= 0){
-				r->status = REB_STATUS_ESCAPE;
-			}
-		}
-	}
-}
+gcc -L. -shared heartbeat.o -o heartbeat.so -lrebound -Wl,-rpath='/home/alelatt/Thesis_2024/Shared_Libs/heartbeat/'
 */
 
 double exit_esc_const = 0;
