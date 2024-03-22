@@ -23,9 +23,9 @@ RSun = 695700000/AU
 MSun =  1.3271244e6/3.986004 #in earth masses
 
 start_time = 0
-end_time = -int(1e4)
-step_time = int(1e3)
-step_fraction = 100
+end_time = -int(1e6)
+step_time = int(1e4)
+step_fraction = 1000
 N_processes = 12
 plot_lines = 3
 plot_columns = 4

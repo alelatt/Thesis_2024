@@ -1,0 +1,4 @@
+Kepler-51 system.
+Masses, radii, periods and eccentricities are taken as the mean value from Matsuda 2014
+The argument of perihelion is randomly sampled from within the uncertainties from Libby-Roberts et al. 2020.
+The orbital parameters are referred to the star.
