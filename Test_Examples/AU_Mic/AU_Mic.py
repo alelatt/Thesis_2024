@@ -24,12 +24,12 @@ RSun = 695700000/AU
 MSun = 1.047348644e3	#in jupiter masses
 
 start_time = 0
-end_time = -int(1e4)
+end_time = -int(1e6)
 step_time = int(1e4)
 step_fraction = 1000
-N_processes = 4#12
-plot_lines = 2#3
-plot_columns = 2#4
+N_processes = 12
+plot_lines = 3
+plot_columns = 4
 
 def Parallel_Sim(niter):
 	print(niter)
@@ -44,14 +44,14 @@ def Parallel_Sim(niter):
 
 	sim.heartbeat = clibheartbeat.heartbeat
 	
-	hashes = ["AU_Mic", "AU_Mic_b", "AU_Mic_c"]
+	hashes = ["AU_Mic", "AU_Mic_b", "AU_Mic_d", "AU_Mic_c"]
 	params = np.loadtxt("/home/alelatt/Thesis_2024/Test_Examples/AU_Mic/AU_Mic.txt")
 
 	np.random.seed(niter)
 	sim.add(m = 0.51*MSun, r = 0.744*RSun, hash = hashes[0])
 	sim.add(m = params[0,9], r = params[0,12]*RJup, P = params[0,0]/365.25, e = np.random.uniform(params[0,4],params[0,5]), omega = params[0,6], hash = hashes[1])
 	sim.add(m = params[1,9], r = params[1,12]*RJup, P = params[1,0]/365.25, e = np.random.uniform(params[1,4],params[1,5]), omega = params[1,6], hash = hashes[2])
-	#sim.add(m = params[2,11], r = params[2,14]*REarth, P = params[2,0]/365.25, e = params[2,6], omega = np.random.uniform(params[2,6],params[2,7]), hash = hashes[3])
+	sim.add(m = params[2,9], r = params[2,12]*RJup, P = params[2,0]/365.25, e = np.random.uniform(params[2,4],params[2,5]), omega = params[2,6], hash = hashes[3])
 
 	t1 = tm.time()
 	out_dir = Simulation(simulation = sim, t_start = start_time, t_end = end_time, step = step_time, step_fraction = step_fraction, hashes = hashes, orbit_fraction = orbit_fraction, small_timestep = small_timestep, exit_enc_const = exit_enc_const, exit_esc_const = exit_esc_const, info = True)
@@ -61,7 +61,7 @@ def Parallel_Sim(niter):
 
 
 if __name__ == '__main__':
-	folderpath = ""
+	folderpath = "./2024_3_22_17_6_45"
 
 	if folderpath == "":
 		loctime = datetime.now()
@@ -84,7 +84,6 @@ if __name__ == '__main__':
 
 		for res_set in results:
 			directories.append(res_set[0])
-			print(res_set[1])
 			sing_runt.append(float(res_set[1]))
 
 		print("Average runtime of a process {:.0f} min".format(np.mean(np.array(sing_runt))/60))
@@ -99,7 +98,7 @@ if __name__ == '__main__':
 		output_sets.append(np.load("{}/outputs.npz".format(directory)))
 
 	for i in range(1, 4):
-		fig, axs = plt.subplots(plot_lines, plot_columns, figsize=(10*plot_columns/plot_lines, 10), layout = 'tight')
+		fig, axs = plt.subplots(plot_lines, plot_columns, figsize = (10*plot_columns/plot_lines, 10), layout = 'tight')
 		fig.suptitle(plot_titles[i-1])
 		line = 0
 		column = 0
@@ -112,5 +111,7 @@ if __name__ == '__main__':
 			if column == plot_columns:
 				column = 0
 				line += 1
+
+	Hist_Plot(directories, 1000, 100, plot_lines, plot_columns, plot_titles, set_titles)
 
 	plt.show()

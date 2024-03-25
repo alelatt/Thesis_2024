@@ -60,7 +60,7 @@ def Parallel_Sim(niter):
 
 
 if __name__ == '__main__':
-	folderpath = "./2024_3_21_23_38_19"
+	folderpath = "./2024_3_23_13_30_16"
 
 	if folderpath == "":
 		loctime = datetime.now()
@@ -83,7 +83,6 @@ if __name__ == '__main__':
 
 		for res_set in results:
 			directories.append(res_set[0])
-			print(res_set[1])
 			sing_runt.append(float(res_set[1]))
 
 		print("Average runtime of a process {:.0f} min".format(np.mean(np.array(sing_runt))/60))
@@ -98,7 +97,7 @@ if __name__ == '__main__':
 		output_sets.append(np.load("{}/outputs.npz".format(directory)))
 
 	for i in range(1, 4):
-		fig, axs = plt.subplots(plot_lines, plot_columns, figsize=(10*plot_columns/plot_lines, 10), layout = 'tight')
+		fig, axs = plt.subplots(plot_lines, plot_columns, figsize = (10*plot_columns/plot_lines, 10), layout = 'tight')
 		fig.suptitle(plot_titles[i-1])
 		line = 0
 		column = 0
@@ -111,5 +110,7 @@ if __name__ == '__main__':
 			if column == plot_columns:
 				column = 0
 				line += 1
+
+	Hist_Plot(directories, 100, 100, plot_lines, plot_columns, plot_titles, set_titles)
 
 	plt.show()

@@ -1,0 +1,5 @@
+AU Microscopii system.
+Masses, radii, periods and arguments of periastron are taken as the mean value from Wittrock et al. 2023
+AU Mic b, AU Mic d and AU Mic c were used.
+The eccentricity is randomly sampled from within the uncertainties.
+The orbital parameters are referred to the star.

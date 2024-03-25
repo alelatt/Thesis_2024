@@ -454,8 +454,9 @@ def Simulation(simulation, t_start, t_end, step, step_fraction, hashes, orbit_fr
 		for time in times:
 			Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 
-			substep = abs(time - simulation.t)/step_fraction
-			subtimes = np.arange(simulation.t + time_dir*substep, time + time_dir*substep, time_dir*substep)
+			substep = time_dir*abs(time - simulation.t)/step_fraction
+			time_next = time + substep
+			subtimes = np.arange(time_next - time_dir*step, time_next, substep)
 			for subtime in subtimes:
 				while abs(simulation.t) < abs(subtime):
 					try:
@@ -496,6 +497,68 @@ def Simulation(simulation, t_start, t_end, step, step_fraction, hashes, orbit_fr
 	output[4].append(outstr)
 	if info == True:
 		print(outstr)
-	Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
 	Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 	return out_dir
+
+
+
+def Window(array, window):
+	pre = 0
+	post = 0
+	if window%2 != 0:
+		pre = (window-1)//2
+		post = (window-1)//2 + 1
+	else:
+		pre = window//2
+		post = window//2
+
+	retvals = np.zeros(len(array)-(pre+post))
+
+	for i in range(pre, len(array)-post):
+		retvals[i-pre] = np.mean(array[(i-pre):(i+post)])
+	return retvals, np.mean(retvals), np.std(retvals)
+
+
+
+def Window2(ref_array, array, window):
+	retvals = []
+	for i in range(len(ref_array)):
+		if abs(ref_array[i]) + window > abs(ref_array[-1]):
+			break
+		summed = 0
+		nelems = 0
+		j = 0
+		while abs(ref_array[i] - ref_array[i+j]) <= window:
+			summed += array[i+j]
+			nelems += 1
+			j += 1
+		retvals.append(summed/nelems)
+	return retvals, np.mean(retvals), np.std(retvals)
+
+
+
+
+def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles, set_titles):
+	output_sets = []
+	for directory in directories:
+		output_sets.append(np.load("{}/outputs.npz".format(directory)))
+
+	for i in range(1, 4):
+		fig, axs = plt.subplots(plot_lines, plot_columns, figsize = (10*plot_columns/plot_lines, 10), layout = 'tight')
+		fig.suptitle("Hist "+plot_titles[i-1])
+		line = 0
+		column = 0
+		for j in range(len(output_sets)):
+			values = output_sets[j][set_titles[i]]
+			times = output_sets[j][set_titles[0]]
+			min_hist = np.min(values)
+			max_hist = np.max(values)
+			for k in range(len(values[0])):
+				object_set, mean, std = Window2(ref_array = times, array = values[:,k], window = window)
+				axs[line, column].hist(object_set, bins = nbins, range = (min_hist, max_hist), alpha = 0.7)
+
+			column += 1
+			if column == plot_columns:
+				column = 0
+				line += 1
+	return
