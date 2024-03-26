@@ -61,7 +61,7 @@ def Parallel_Sim(niter):
 
 
 if __name__ == '__main__':
-	folderpath = "./2024_3_22_17_6_45"
+	folderpath = "./2024_3_23_19_37_46"
 
 	if folderpath == "":
 		loctime = datetime.now()
@@ -112,6 +112,6 @@ if __name__ == '__main__':
 				column = 0
 				line += 1
 
-	Hist_Plot(directories, 1000, 100, plot_lines, plot_columns, plot_titles, set_titles)
+	Hist_Plot(directories, 100, 100, plot_lines, plot_columns, plot_titles, set_titles)
 
 	plt.show()
