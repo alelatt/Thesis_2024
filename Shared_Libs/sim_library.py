@@ -551,11 +551,16 @@ def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles,
 		for j in range(len(output_sets)):
 			values = output_sets[j][set_titles[i]]
 			times = output_sets[j][set_titles[0]]
-			min_hist = np.min(values)
-			max_hist = np.max(values)
+			obj_sets = []
 			for k in range(len(values[0])):
 				object_set, mean, std = Window2(ref_array = times, array = values[:,k], window = window)
-				axs[line, column].hist(object_set, bins = nbins, range = (min_hist, max_hist), alpha = 0.7)
+				obj_sets.append(object_set)
+
+			min_hist = np.min(obj_sets)
+			max_hist = np.max(obj_sets)
+
+			for k in range(len(values[0])):
+				axs[line, column].hist(obj_sets[k], bins = nbins, range = (min_hist, max_hist), alpha = 0.7)
 
 			column += 1
 			if column == plot_columns:
