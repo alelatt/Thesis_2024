@@ -502,20 +502,27 @@ def Simulation(simulation, t_start, t_end, step, step_fraction, hashes, orbit_fr
 
 
 
-def Window(array, window):
-	pre = 0
-	post = 0
-	if window%2 != 0:
-		pre = (window-1)//2
-		post = (window-1)//2 + 1
+def Window(ref_array, array, window):
+	retvals = []
+
+	time_dir = 0
+	if ref_array[0] > ref_array[-1]:
+		time_dir = -1
 	else:
-		pre = window//2
-		post = window//2
+		time_dir = 1
 
-	retvals = np.zeros(len(array)-(pre+post))
+	wind_sgn = time_dir*window
 
-	for i in range(pre, len(array)-post):
-		retvals[i-pre] = np.mean(array[(i-pre):(i+post)])
+	for i in range(len(array)):
+		if abs(ref_array[-1] - ref_array[i]) < window:
+			break
+		diff_arr = ref_array - (ref_array[i] + wind_sgn)
+		indx_closest = np.abs(diff_arr).argmin()
+		if diff_arr[indx_closest] <= 0:
+			retvals.append(np.mean(array[i:indx_closest+1]))
+		else:
+			retvals.append(np.mean(array[i:indx_closest]))
+
 	return retvals, np.mean(retvals), np.std(retvals)
 
 
@@ -523,7 +530,7 @@ def Window(array, window):
 def Window2(ref_array, array, window):
 	retvals = []
 	for i in range(len(ref_array)):
-		if abs(ref_array[i]) + window > abs(ref_array[-1]):
+		if abs(ref_array[-1] - ref_array[i]) < window:
 			break
 		summed = 0
 		nelems = 0
@@ -553,6 +560,8 @@ def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles,
 			times = output_sets[j][set_titles[0]]
 			obj_sets = []
 			for k in range(len(values[0])):
+				t1 = tm.time()
+				#object_set, mean, std = Window(ref_array = times, array = values[:,k], window = window)
 				object_set, mean, std = Window2(ref_array = times, array = values[:,k], window = window)
 				obj_sets.append(object_set)
 
@@ -560,10 +569,33 @@ def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles,
 			max_hist = np.max(obj_sets)
 
 			for k in range(len(values[0])):
-				axs[line, column].hist(obj_sets[k], bins = nbins, range = (min_hist, max_hist), alpha = 0.7)
+				if j == 0:
+					axs[line, column].hist(obj_sets[k], bins = nbins, range = (min_hist, max_hist), alpha = 0.7, label = "Planet {:.0f}".format(k))
+					axs[line, column].legend(loc = 'best')
+				else:
+					axs[line, column].hist(obj_sets[k], bins = nbins, range = (min_hist, max_hist), alpha = 0.7)
 
 			column += 1
 			if column == plot_columns:
 				column = 0
 				line += 1
+	return
+
+
+
+def Rothko_Plot(directories, set_title1, set_title2):
+	output_sets = []
+	for directory in directories:
+		output_sets.append(np.load("{}/outputs.npz".format(directory)))
+
+	for i in range(len(output_sets[0][set_title1][0])):
+		fig = plt.figure(figsize = [10,10], layout = 'tight')
+		ax = fig.add_subplot(111)
+		fig.suptitle("Rothko ({:s}-{:s}) for object {:.0f}".format(set_title1, set_title2, i))
+		for j in range(len(output_sets)):
+			arr1 = output_sets[j][set_title1][:,i]
+			arr2 = output_sets[j][set_title2][:,i]
+			ax.plot(arr1, arr2, '.', alpha = 0.01)
+			ax.set_xlabel(set_title1)
+			ax.set_ylabel(set_title2)
 	return
