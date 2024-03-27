@@ -92,6 +92,7 @@ if __name__ == '__main__':
 
 	plot_titles = ["Semimajor axis", "Eccentricity", "Inclination"]
 	set_titles = ['tsteps', 'semiaxis', 'eccent', 'incl']
+	'''
 	output_sets = []
 	for directory in directories:
 		output_sets.append(np.load("{}/outputs.npz".format(directory)))
@@ -110,7 +111,8 @@ if __name__ == '__main__':
 			if column == plot_columns:
 				column = 0
 				line += 1
-
+	'''
+	Rothko_Plot(directories, set_titles[1], set_titles[2])
 	Hist_Plot(directories, 100, 100, plot_lines, plot_columns, plot_titles, set_titles)
 
 	plt.show()
