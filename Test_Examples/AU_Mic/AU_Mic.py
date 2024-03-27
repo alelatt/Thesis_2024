@@ -24,9 +24,9 @@ RSun = 695700000/AU
 MSun = 1.047348644e3	#in jupiter masses
 
 start_time = 0
-end_time = -int(1e6)
-step_time = int(1e4)
-step_fraction = 1000
+end_time = -int(1e5)
+step_time = int(1e3)
+step_fraction = 100
 N_processes = 12
 plot_lines = 3
 plot_columns = 4
@@ -44,14 +44,14 @@ def Parallel_Sim(niter):
 
 	sim.heartbeat = clibheartbeat.heartbeat
 	
-	hashes = ["AU_Mic", "AU_Mic_b", "AU_Mic_d", "AU_Mic_c"]
+	hashes = ["AU_Mic", "AU_Mic_b", "AU_Mic_d"]#, "AU_Mic_c"]
 	params = np.loadtxt("/home/alelatt/Thesis_2024/Test_Examples/AU_Mic/AU_Mic.txt")
 
 	np.random.seed(niter)
 	sim.add(m = 0.51*MSun, r = 0.744*RSun, hash = hashes[0])
 	sim.add(m = params[0,9], r = params[0,12]*RJup, P = params[0,0]/365.25, e = np.random.uniform(params[0,4],params[0,5]), omega = params[0,6], hash = hashes[1])
 	sim.add(m = params[1,9], r = params[1,12]*RJup, P = params[1,0]/365.25, e = np.random.uniform(params[1,4],params[1,5]), omega = params[1,6], hash = hashes[2])
-	sim.add(m = params[2,9], r = params[2,12]*RJup, P = params[2,0]/365.25, e = np.random.uniform(params[2,4],params[2,5]), omega = params[2,6], hash = hashes[3])
+	#sim.add(m = params[2,9], r = params[2,12]*RJup, P = params[2,0]/365.25, e = np.random.uniform(params[2,4],params[2,5]), omega = params[2,6], hash = hashes[3])
 
 	t1 = tm.time()
 	out_dir = Simulation(simulation = sim, t_start = start_time, t_end = end_time, step = step_time, step_fraction = step_fraction, hashes = hashes, orbit_fraction = orbit_fraction, small_timestep = small_timestep, exit_enc_const = exit_enc_const, exit_esc_const = exit_esc_const, info = True)
@@ -61,7 +61,7 @@ def Parallel_Sim(niter):
 
 
 if __name__ == '__main__':
-	folderpath = "./2024_3_22_17_6_45"
+	folderpath = ""
 
 	if folderpath == "":
 		loctime = datetime.now()
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 				column = 0
 				line += 1
 	'''
-	Rothko_Plot(directories, set_titles[1], set_titles[2])
+	Rothko_Plot(directories, set_titles[1], set_titles[2], alpha = 0.1)
 	Hist_Plot(directories, 100, 100, plot_lines, plot_columns, plot_titles, set_titles)
 
 	plt.show()

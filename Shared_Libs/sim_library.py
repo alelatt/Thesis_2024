@@ -221,7 +221,11 @@ def Output_to_file(simulation, outputs, fpath = ""):
 	if fpath == "":
 		tm.sleep(np.random.uniform(0,1)/100)
 		loctime = datetime.now()
-		fpath = "./{}".format(loctime.microsecond)
+		fpath = "./{}".format(loctime.microsecond + int(np.random.uniform(0,10000)))
+		while os.path.exists(fpath):
+			tm.sleep(np.random.uniform(0,1)/100)
+			loctime = datetime.now()
+			fpath = "./{}".format(loctime.microsecond + int(np.random.uniform(0,10000)))
 		os.mkdir(fpath)
 		return fpath
 
@@ -451,12 +455,17 @@ def Simulation(simulation, t_start, t_end, step, step_fraction, hashes, orbit_fr
 	Update_Elems(simulation = simulation, init_N = init_N, hashes = hashes, outputs = output)
 
 	try:
-		for time in times:
+		for i in range(len(times)):
+			time = times[i]
+			prev_time = np.nan
+			if i == 0:
+				prev_time = 0
+			else:
+				prev_time = times[i-1]
 			Output_to_file(simulation = simulation, outputs = output, fpath = out_dir)
 
-			substep = time_dir*abs(time - simulation.t)/step_fraction
-			time_next = time + substep
-			subtimes = np.arange(time_next - time_dir*step, time_next, substep)
+			substep = time_dir*step/step_fraction
+			subtimes = np.arange(prev_time + substep, time + substep, substep)
 			for subtime in subtimes:
 				while abs(simulation.t) < abs(subtime):
 					try:
@@ -550,7 +559,7 @@ def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles,
 	for directory in directories:
 		output_sets.append(np.load("{}/outputs.npz".format(directory)))
 
-	for i in range(1, 4):
+	for i in range(1, len(set_titles)):
 		fig, axs = plt.subplots(plot_lines, plot_columns, figsize = (10*plot_columns/plot_lines, 10), layout = 'tight')
 		fig.suptitle("Hist "+plot_titles[i-1])
 		line = 0
@@ -583,7 +592,7 @@ def Hist_Plot(directories, window, nbins, plot_lines, plot_columns, plot_titles,
 
 
 
-def Rothko_Plot(directories, set_title1, set_title2):
+def Rothko_Plot(directories, set_title1, set_title2, alpha = 0.01):
 	output_sets = []
 	for directory in directories:
 		output_sets.append(np.load("{}/outputs.npz".format(directory)))
@@ -595,7 +604,7 @@ def Rothko_Plot(directories, set_title1, set_title2):
 		for j in range(len(output_sets)):
 			arr1 = output_sets[j][set_title1][:,i]
 			arr2 = output_sets[j][set_title2][:,i]
-			ax.plot(arr1, arr2, '.', alpha = 0.01)
+			ax.plot(arr1, arr2, '.', alpha = alpha)
 			ax.set_xlabel(set_title1)
 			ax.set_ylabel(set_title2)
 	return
